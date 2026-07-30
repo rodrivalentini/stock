@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Control de Stock</title>
+<style>
+  :root{
+    --bg:#1b1f1a;
+    --card:#252a22;
+    --card-border:#3a4230;
+    --accent:#8fae4f;
+    --warn:#d99a3a;
+    --danger:#c0503f;
+    --text:#eef0e6;
+    --text-dim:#9aa38c;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Roboto, Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    padding:20px 14px 50px;
+  }
+  h1{
+    text-align:center;
+    font-size:1.3rem;
+    font-weight:700;
+    margin:0 0 4px;
+    letter-spacing:.5px;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:.8rem;
+    margin-bottom:22px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:12px;
+    max-width:480px;
+    margin:0 auto;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:12px;
+    padding:20px 10px;
+    text-align:center;
+    cursor:pointer;
+    user-select:none;
+    transition:transform .08s ease, border-color .15s ease;
+    position:relative;
+    min-height:110px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  .card:active{ transform:scale(0.95); background:#2d3327; }
+  .card.low{ border-color:var(--warn); }
+  .card.out{ border-color:var(--danger); opacity:.65; }
+  .card.otro{ border-style:dashed; }
+  .name{
+    font-size:1.1rem;
+    font-weight:600;
+    margin-bottom:8px;
+  }
+  .stock{
+    font-size:2.1rem;
+    font-weight:800;
+    color:var(--accent);
+    line-height:1;
+  }
+  .card.low .stock{ color:var(--warn); }
+  .card.out .stock{ color:var(--danger); }
+  .stock-label{
+    font-size:.68rem;
+    color:var(--text-dim);
+    margin-top:2px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+  .card .edit{
+    position:absolute;
+    top:4px;
+    right:4px;
+    font-size:1rem;
+    color:var(--text-dim);
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:8px;
+    line-height:1;
+  }
+  .card.otro .otro-icon{
+    font-size:1.8rem;
+    color:var(--text-dim);
+  }
+  footer{
+    max-width:480px;
+    margin:28px auto 0;
+    text-align:center;
+    font-size:.72rem;
+    color:var(--text-dim);
+    line-height:1.5;
+  }
+  .config-note{
+    max-width:480px;
+    margin:0 auto 18px;
+    background:#3a2f22;
+    border:1px solid var(--warn);
+    color:var(--warn);
+    font-size:.78rem;
+    padding:10px 14px;
+    border-radius:8px;
+    display:none;
+  }
+  .config-note.show{ display:block; }
+</style>
+</head>
+<body>
+
+<h1>Control de Stock</h1>
+<div class="subtitle">Tocá un producto para descontar 1 unidad</div>
+
+<div class="config-note" id="configNote">
+  ⚠️ Falta configurar el número de WhatsApp en el script.
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer>Tocá el ✎ para editar el stock manualmente.<br>Solo se avisa por WhatsApp cuando queda la última unidad o cuando no queda ninguna.</footer>
+
+<script>
+  // ==== CONFIGURACIÓN ====
+  const WHATSAPP_NUMERO = "5492262351228"; // +54 2262 351228
+  const DESTINATARIO = "Marce";
+
+  const PRODUCTOS = ["Yerba","Azúcar","Té","Café","Servilletas","Mayonesa"];
+  const STOCK_INICIAL = 5;
+
+  if (!WHATSAPP_NUMERO || WHATSAPP_NUMERO.length < 10) {
+    document.getElementById('configNote').classList.add('show');
+  }
+
+  const STORAGE_KEY = "stock_productos_v1";
+
+  function cargarStock(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    const inicial = {};
+    PRODUCTOS.forEach(p => inicial[p] = STOCK_INICIAL);
+    return inicial;
+  }
+
+  function guardarStock(stock){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(stock)); }catch(e){}
+  }
+
+  let stock = cargarStock();
+
+  function enviarWhatsapp(mensaje){
+    const url = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+  }
+
+  function render(){
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+
+    PRODUCTOS.forEach(prod => {
+      const cantidad = stock[prod];
+      const card = document.createElement('div');
+      card.className = 'card' + (cantidad === 0 ? ' out' : (cantidad === 1 ? ' low' : ''));
+
+      card.innerHTML = `
+        <button class="edit" title="Editar stock">✎</button>
+        <div class="name">${prod}</div>
+        <div class="stock">${cantidad}</div>
+        <div class="stock-label">unidades</div>
+      `;
+
+      card.addEventListener('click', (e) => {
+        if(e.target.classList.contains('edit')) return;
+        descontar(prod);
+      });
+
+      card.querySelector('.edit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        editarStock(prod);
+      });
+
+      grid.appendChild(card);
+    });
+
+    // Tarjeta "Otro" - mensaje libre
+    const otro = document.createElement('div');
+    otro.className = 'card otro';
+    otro.innerHTML = `
+      <div class="otro-icon">✏️</div>
+      <div class="name">Otro</div>
+      <div class="stock-label">escribir mensaje</div>
+    `;
+    otro.addEventListener('click', enviarMensajeLibre);
+    grid.appendChild(otro);
+  }
+
+  function descontar(prod){
+    const actual = stock[prod];
+
+    if(actual <= 0){
+      enviarWhatsapp(`${DESTINATARIO}, no hay más ${prod}`);
+      return;
+    }
+
+    stock[prod] = actual - 1;
+    guardarStock(stock);
+
+    if(stock[prod] === 1){
+      enviarWhatsapp(`${DESTINATARIO}, queda la última unidad de ${prod}`);
+    } else if(stock[prod] === 0){
+      enviarWhatsapp(`${DESTINATARIO}, no hay más ${prod}`);
+    }
+
+    render();
+  }
+
+  function editarStock(prod){
+    const valor = prompt(`Nuevo stock para ${prod}:`, stock[prod]);
+    if(valor === null) return;
+    const n = parseInt(valor, 10);
+    if(!isNaN(n) && n >= 0){
+      stock[prod] = n;
+      guardarStock(stock);
+      render();
+    }
+  }
+
+  function enviarMensajeLibre(){
+    const producto = prompt("¿Qué producto?");
+    if(producto === null || producto.trim() === "") return;
+
+    const esUltima = confirm("Aceptar = queda la última unidad\nCancelar = no hay más unidades");
+    const mensaje = esUltima
+      ? `${DESTINATARIO}, queda la última unidad de ${producto.trim()}`
+      : `${DESTINATARIO}, no hay más ${producto.trim()}`;
+
+    enviarWhatsapp(mensaje);
+  }
+
+  render();
+</script>
+
+</body>
+</html>
