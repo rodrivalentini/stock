@@ -60,9 +60,10 @@
     margin-bottom:4px;
   }
   .name{
-    font-size:1rem;
+    font-size:1.05rem;
     font-weight:600;
-    margin-bottom:10px;
+    margin-top:4px;
+    margin-bottom:12px;
   }
   .btn-row{
     display:flex;
@@ -135,12 +136,12 @@
   const DESTINATARIO = "Marce";
 
   const PRODUCTOS = [
-    { nombre: "Yerba"},
-    { nombre: "Azúcar"},
-    { nombre: "Té"},
-    { nombre: "Café"},
-    { nombre: "Servilletas"},
-    { nombre: "Mayonesa"},
+    { nombre: "Yerba" },
+    { nombre: "Azúcar" },
+    { nombre: "Té" },
+    { nombre: "Café" },
+    { nombre: "Servilletas" },
+    { nombre: "Mayonesa" },
   ];
 
   if (!WHATSAPP_NUMERO || WHATSAPP_NUMERO.length < 10) {
@@ -168,7 +169,6 @@
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
-        <div class="icon">${icono}</div>
         <div class="name">${nombre}</div>
         <div class="btn-row">
           <button class="btn last">Queda 1</button>
@@ -184,7 +184,6 @@
     const otro = document.createElement('div');
     otro.className = 'card producto';
     otro.innerHTML = `
-      <div class="icon">✏️</div>
       <div class="name">Otro</div>
       <input type="text" class="otro-input" placeholder="Nombre del producto" id="otroInput">
       <div class="btn-row">
