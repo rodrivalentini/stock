@@ -3,13 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Control de Stock</title>
+<title>Aviso de Stock</title>
 <style>
   :root{
     --bg:#1b1f1a;
     --card:#252a22;
     --card-border:#3a4230;
-    --accent:#8fae4f;
     --warn:#d99a3a;
     --danger:#c0503f;
     --text:#eef0e6;
@@ -48,60 +47,56 @@
     background:var(--card);
     border:1px solid var(--card-border);
     border-radius:12px;
-    padding:20px 10px;
+    padding:16px 10px;
     text-align:center;
-    cursor:pointer;
-    user-select:none;
-    transition:transform .08s ease, border-color .15s ease;
-    position:relative;
-    min-height:110px;
     display:flex;
     flex-direction:column;
-    justify-content:center;
+    align-items:center;
   }
-  .card:active{ transform:scale(0.95); background:#2d3327; }
-  .card.low{ border-color:var(--warn); }
-  .card.out{ border-color:var(--danger); opacity:.65; }
-  .card.otro{ border-style:dashed; }
+  .card.producto{ border-style:dashed; }
+  .icon{
+    font-size:1.9rem;
+    line-height:1;
+    margin-bottom:4px;
+  }
   .name{
-    font-size:1.1rem;
-    font-weight:600;
-    margin-bottom:8px;
-  }
-  .stock{
-    font-size:2.1rem;
-    font-weight:800;
-    color:var(--accent);
-    line-height:1;
-  }
-  .card.low .stock{ color:var(--warn); }
-  .card.out .stock{ color:var(--danger); }
-  .stock-label{
-    font-size:.68rem;
-    color:var(--text-dim);
-    margin-top:2px;
-    text-transform:uppercase;
-    letter-spacing:.5px;
-  }
-  .card .edit{
-    position:absolute;
-    top:4px;
-    right:4px;
     font-size:1rem;
-    color:var(--text-dim);
-    background:none;
+    font-weight:600;
+    margin-bottom:10px;
+  }
+  .btn-row{
+    display:flex;
+    gap:6px;
+    width:100%;
+  }
+  .btn{
+    flex:1;
     border:none;
+    border-radius:8px;
+    padding:10px 2px;
+    font-size:.78rem;
+    font-weight:700;
     cursor:pointer;
-    padding:8px;
-    line-height:1;
+    transition:transform .08s ease, filter .1s ease;
   }
-  .card.otro .otro-icon{
-    font-size:1.8rem;
-    color:var(--text-dim);
+  .btn:active{ transform:scale(0.94); }
+  .btn.last{ background:var(--warn); color:#1b1f1a; }
+  .btn.none{ background:var(--danger); color:#fff; }
+  .otro-input{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--card-border);
+    color:var(--text);
+    padding:9px 6px;
+    border-radius:7px;
+    text-align:center;
+    font-size:.85rem;
+    margin-bottom:10px;
   }
+  .otro-input::placeholder{ color:var(--text-dim); }
   footer{
     max-width:480px;
-    margin:28px auto 0;
+    margin:26px auto 0;
     text-align:center;
     font-size:.72rem;
     color:var(--text-dim);
@@ -123,8 +118,8 @@
 </head>
 <body>
 
-<h1>Control de Stock</h1>
-<div class="subtitle">Tocá un producto para descontar 1 unidad</div>
+<h1>Aviso de Stock</h1>
+<div class="subtitle">Tocá el botón según corresponda</div>
 
 <div class="config-note" id="configNote">
   ⚠️ Falta configurar el número de WhatsApp en el script.
@@ -132,125 +127,83 @@
 
 <div class="grid" id="grid"></div>
 
-<footer>Tocá el ✎ para editar el stock manualmente.<br>Solo se avisa por WhatsApp cuando queda la última unidad o cuando no queda ninguna.</footer>
+<footer>"Queda 1" avisa que es la última unidad. "Queda 0" avisa que no hay más.</footer>
 
 <script>
   // ==== CONFIGURACIÓN ====
   const WHATSAPP_NUMERO = "5492262351228"; // +54 2262 351228
   const DESTINATARIO = "Marce";
 
-  const PRODUCTOS = ["Yerba","Azúcar","Té","Café","Servilletas","Mayonesa"];
-  const STOCK_INICIAL = 5;
+  const PRODUCTOS = [
+    { nombre: "Yerba",       icono: "🧉" },
+    { nombre: "Azúcar",      icono: "🧂" },
+    { nombre: "Té",          icono: "🍵" },
+    { nombre: "Café",        icono: "☕" },
+    { nombre: "Servilletas", icono: "🧻" },
+    { nombre: "Mayonesa",    icono: "🫙" },
+  ];
 
   if (!WHATSAPP_NUMERO || WHATSAPP_NUMERO.length < 10) {
     document.getElementById('configNote').classList.add('show');
   }
-
-  const STORAGE_KEY = "stock_productos_v1";
-
-  function cargarStock(){
-    try{
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw) return JSON.parse(raw);
-    }catch(e){}
-    const inicial = {};
-    PRODUCTOS.forEach(p => inicial[p] = STOCK_INICIAL);
-    return inicial;
-  }
-
-  function guardarStock(stock){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(stock)); }catch(e){}
-  }
-
-  let stock = cargarStock();
 
   function enviarWhatsapp(mensaje){
     const url = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
   }
 
+  function avisarUltima(prod){
+    enviarWhatsapp(`${DESTINATARIO}, queda la última unidad de ${prod}`);
+  }
+
+  function avisarSinStock(prod){
+    enviarWhatsapp(`${DESTINATARIO}, no hay más ${prod}`);
+  }
+
   function render(){
     const grid = document.getElementById('grid');
     grid.innerHTML = '';
 
-    PRODUCTOS.forEach(prod => {
-      const cantidad = stock[prod];
+    PRODUCTOS.forEach(({nombre, icono}) => {
       const card = document.createElement('div');
-      card.className = 'card' + (cantidad === 0 ? ' out' : (cantidad === 1 ? ' low' : ''));
-
+      card.className = 'card';
       card.innerHTML = `
-        <button class="edit" title="Editar stock">✎</button>
-        <div class="name">${prod}</div>
-        <div class="stock">${cantidad}</div>
-        <div class="stock-label">unidades</div>
+        <div class="icon">${icono}</div>
+        <div class="name">${nombre}</div>
+        <div class="btn-row">
+          <button class="btn last">Queda 1</button>
+          <button class="btn none">Queda 0</button>
+        </div>
       `;
-
-      card.addEventListener('click', (e) => {
-        if(e.target.classList.contains('edit')) return;
-        descontar(prod);
-      });
-
-      card.querySelector('.edit').addEventListener('click', (e) => {
-        e.stopPropagation();
-        editarStock(prod);
-      });
-
+      card.querySelector('.btn.last').addEventListener('click', () => avisarUltima(nombre));
+      card.querySelector('.btn.none').addEventListener('click', () => avisarSinStock(nombre));
       grid.appendChild(card);
     });
 
-    // Tarjeta "Otro" - mensaje libre
+    // Tarjeta "Otro" - producto que no está en la lista
     const otro = document.createElement('div');
-    otro.className = 'card otro';
+    otro.className = 'card producto';
     otro.innerHTML = `
-      <div class="otro-icon">✏️</div>
+      <div class="icon">✏️</div>
       <div class="name">Otro</div>
-      <div class="stock-label">escribir mensaje</div>
+      <input type="text" class="otro-input" placeholder="Nombre del producto" id="otroInput">
+      <div class="btn-row">
+        <button class="btn last" id="otroLast">Queda 1</button>
+        <button class="btn none" id="otroNone">Queda 0</button>
+      </div>
     `;
-    otro.addEventListener('click', enviarMensajeLibre);
     grid.appendChild(otro);
-  }
 
-  function descontar(prod){
-    const actual = stock[prod];
-
-    if(actual <= 0){
-      enviarWhatsapp(`${DESTINATARIO}, no hay más ${prod}`);
-      return;
-    }
-
-    stock[prod] = actual - 1;
-    guardarStock(stock);
-
-    if(stock[prod] === 1){
-      enviarWhatsapp(`${DESTINATARIO}, queda la última unidad de ${prod}`);
-    } else if(stock[prod] === 0){
-      enviarWhatsapp(`${DESTINATARIO}, no hay más ${prod}`);
-    }
-
-    render();
-  }
-
-  function editarStock(prod){
-    const valor = prompt(`Nuevo stock para ${prod}:`, stock[prod]);
-    if(valor === null) return;
-    const n = parseInt(valor, 10);
-    if(!isNaN(n) && n >= 0){
-      stock[prod] = n;
-      guardarStock(stock);
-      render();
-    }
-  }
-
-  function enviarMensajeLibre(){
-    const producto = prompt("¿Qué producto?");
-    if(producto === null || producto.trim() === "") return;
-
-    const esUltima = confirm("Aceptar = queda la última unidad\nCancelar = no hay más unidades");
-    const mensaje = esUltima
-      ? `${DESTINATARIO}, queda la última unidad de ${producto.trim()}`
-      : `${DESTINATARIO}, no hay más ${producto.trim()}`;
-
-    enviarWhatsapp(mensaje);
+    document.getElementById('otroLast').addEventListener('click', () => {
+      const nombre = document.getElementById('otroInput').value.trim();
+      if(!nombre){ alert('Escribí el nombre del producto'); return; }
+      avisarUltima(nombre);
+    });
+    document.getElementById('otroNone').addEventListener('click', () => {
+      const nombre = document.getElementById('otroInput').value.trim();
+      if(!nombre){ alert('Escribí el nombre del producto'); return; }
+      avisarSinStock(nombre);
+    });
   }
 
   render();
